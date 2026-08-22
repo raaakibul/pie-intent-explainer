@@ -1,0 +1,20 @@
+experiment:
+  name: iet_baseline
+  seed: 42
+  device: cuda
+  output_dir: outputs/
+  checkpoint_dir: checkpoints/
+
+data:
+  pie_root: /path/to/PIE_dataset
+  processed_dir: data/processed
+  observe_frames: 10
+  predict_frames: 15
+  frame_stride: 2
+  image_size: [224, 224]                
+  train_split: [set01, set02, set03, set04]
+  val_split: [set05, set06]
+  test_split: [set07, set08, set09, set10]
+  min_bbox_area: 400
+  ego_speed_kmh_range: [0, 30]
+  num_workers: 4
