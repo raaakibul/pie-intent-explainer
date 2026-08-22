@@ -54,3 +54,11 @@ def pixel_to_ground_plane(uv: np.ndarray,
     y_lateral = -t * x_cam
 
     return np.stack([x_forward, y_lateral], axis=-1)
+
+def bounding_box_sequence_to_ego_xy(bounding_box_seq_xyxy: np.ndarray) -> np.ndarray:
+    feet = bounding_box_to_feet_point(bounding_box_seq_xyxy)
+    return pixel_to_ground_plane(feet)
+
+
+def normalize_trajectory(xy: np.ndarray) -> np.ndarray:
+    return xy - xy[0:1]
