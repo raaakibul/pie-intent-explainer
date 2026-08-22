@@ -18,3 +18,55 @@ data:
   min_bbox_area: 400
   ego_speed_kmh_range: [0, 30]
   num_workers: 4
+
+model:
+  backbone: resnet50
+  backbone_pretrained: true
+  freeze_backbone_stages: 2
+  feature_dim: 2048
+  bbox_feat_dim: 32
+  lstm_hidden_dim: 256
+  lstm_num_layers: 2
+  lstm_bidirectional: true
+  intent_hidden_dim: 128
+  intent_num_classes: 2
+  intent_embed_dim: 64
+  traj_decoder_hidden_dim: 256
+  traj_decoder_num_layers: 1
+  dropout: 0.3
+
+loss:
+  intent_weight: 1.0
+  trajectory_weight: 1.0
+  label_smoothing: 0.05
+
+train:
+  batch_size: 32
+  epochs: 60
+  lr: 1.0e-4
+  weight_decay: 1.0e-5
+  lr_scheduler: cosine
+  warmup_epochs: 3
+  grad_clip_norm: 5.0
+  early_stopping_patience: 10
+  log_every_n_steps: 20
+  val_every_n_epochs: 1
+
+
+evaluate:
+  ece_num_bins: 10
+  human_explanations_path: data/human_explanations.json
+  bleu_n: 4
+
+explain:
+  backend: hf
+  hf_model: meta-llama/Llama-3.1-8B-Instruct
+  hf_load_in_4bit: true
+  hf_max_new_tokens: 160
+  hf_temperature: 0.3
+  openai_model: gpt-4o
+  openai_max_tokens: 200
+  openai_temperature: 0.3
+  decel_trigger_ttc_s: 3.0
+  min_yield_clearance_m: 1.5
+  max_comfortable_decel_mps2: 2.0
