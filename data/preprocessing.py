@@ -85,6 +85,17 @@ def split_by_set(records: List[Dict], cfg: dict) -> Dict[str, List[Dict]]:
                 break
     return out
 
+def augment_with_ego_speed_and_metric_traj(records: List[Dict], cfg: dict, rng: np.random.Generator):
+    lo, hi = cfg["data"]["ego_speed_kmh_range"]
+    for rec in records:
+        rec["ego_speed_kmh"] = float(rng.uniform(lo, hi))
+
+        obs_xy = bounding_box_sequence_to_ego_xy(np.array(rec["bboxes_obs"], dtype=np.float32))
+        fut_xy = bounding_box_sequence_to_ego_xy(np.array(rec["bboxes_future"], dtype=np.float32))
+        rec["traj_obs_xy"] = obs_xy.tolist()
+        rec["traj_future_xy"] = fut_xy.tolist()
+    return records
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
