@@ -34,3 +34,14 @@ class TemporalEncoder(nn.Module):
         self.num_directions = 2 if bidirectional else 1
         self.output_dim = hidden_dim * self.num_directions
         
+    def forward(self, cnn_feats: torch.Tensor, bbox_feats: torch.Tensor):
+        bbox_emb = self.bbox_encoder(bbox_feats)
+        fused = torch.cat([cnn_feats, bbox_emb], dim=-1)
+        fused = self.input_proj(fused)
+
+        seq_out, (h_n, c_n) = self.lstm(fused)
+        h_n = h_n.view(self.lstm.num_layers, self.num_directions, -1, self.lstm.hidden_size)
+        last_layer = h_n[-1]
+        summary = torch.cat([last_layer[d] for d in range(self.num_directions)], dim=-1)
+        return seq_out, summary
+    
