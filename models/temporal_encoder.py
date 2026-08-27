@@ -15,3 +15,22 @@ class BBoxEncoder(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
     
+class TemporalEncoder(nn.Module):
+    def __init__(self, feature_dim: int = 2048, bbox_feat_dim: int = 32,
+                 hidden_dim: int = 256, num_layers: int = 2,
+                 bidirectional: bool = True, dropout: float = 0.3):
+        
+        super().__init__()
+        self.bbox_encoder = BBoxEncoder(out_dim=bbox_feat_dim)
+        self.input_proj = nn.Linear(feature_dim + bbox_feat_dim, hidden_dim)
+        self.lstm = nn.LSTM(
+            input_size=hidden_dim,
+            hidden_size=hidden_dim,
+            num_layers=num_layers,
+            batch_first=True,
+            bidirectional=bidirectional,
+            dropout=dropout if num_layers > 1 else 0.0,
+        )
+        self.num_directions = 2 if bidirectional else 1
+        self.output_dim = hidden_dim * self.num_directions
+        
