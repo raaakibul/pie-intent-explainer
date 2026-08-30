@@ -4,6 +4,7 @@ import torch
 from models.backbone import ResNetBackbone
 from utils.coordinate_transform import bounding_box_sequence_to_ego_xy, normalize_trajectory
 from models.temporal_encoder import TemporalEncoder
+from models.intent_head import IntentHead
 
 T_OBS = 10
 
@@ -31,3 +32,11 @@ def test_temporal_encoder_output_shape():
     seq_out, summary = enc(cnn_feats, bbox_feats)
     assert seq_out.shape == (B, T_OBS, 512)
     assert summary.shape == (B, 512)
+    
+
+def test_intent_head_output_shape():
+    head = IntentHead(in_dim=512, hidden_dim=128, num_classes=2, embed_dim=64)
+    summary = torch.randn(B, 512)
+    logits, embedding = head(summary)
+    assert logits.shape == (B, 2)
+    assert embedding.shape == (B, 64)
