@@ -73,3 +73,34 @@ def test_intent_conditioning_changes_trajectory():
     traj_a = dec(context, intent_a, last_obs)
     traj_b = dec(context, intent_b, last_obs)
     assert not torch.allclose(traj_a, traj_b), "Trajectory should depend on intent embedding"
+    
+import yaml
+
+from models.iet_model import IETModel
+import pytest
+
+@pytest.fixture(scope="module")
+def cfg():
+    with open("configs/default.yaml") as f:
+        c = yaml.safe_load(f)
+    c["model"]["backbone_pretrained"] = False
+    return c
+
+
+def test_full_model_forward(cfg):
+    model = IETModel(cfg)
+    model.eval()
+    batch = {
+        "frames": torch.randn(B, T_OBS, 3, *cfg["data"]["image_size"]),
+        "bbox_feats": torch.randn(B, T_OBS, 4),
+        "traj_obs": torch.randn(B, T_OBS, 2),
+        "traj_future": torch.randn(B, T_PRED, 2),
+        "intent_label": torch.randint(0, 2, (B,)),
+        "ego_speed": torch.rand(B) * 8.0,
+    }
+    with torch.no_grad():
+        out = model(batch, teacher_forcing=False)
+
+    assert out["intent_logits"].shape == (B, 2)
+    assert out["pred_traj"].shape == (B, T_PRED, 2)
+    assert torch.allclose(out["intent_probs"].sum(dim=-1), torch.ones(B), atol=1e-4)
