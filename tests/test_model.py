@@ -7,6 +7,8 @@ from models.temporal_encoder import TemporalEncoder
 from models.intent_head import IntentHead
 from models.trajectory_decoder import TrajectoryDecoder
 
+from utils import metrics as M
+
 T_OBS = 10
 
 def test_coordinate_transform_shapes():
@@ -104,3 +106,27 @@ def test_full_model_forward(cfg):
     assert out["intent_logits"].shape == (B, 2)
     assert out["pred_traj"].shape == (B, T_PRED, 2)
     assert torch.allclose(out["intent_probs"].sum(dim=-1), torch.ones(B), atol=1e-4)
+    
+
+def test_ade_fde_zero_for_perfect_prediction():
+    pred = np.random.randn(4, T_PRED, 2).astype(np.float32)
+    gt = pred.copy()
+    assert M.average_displacement_error(pred, gt) == pytest.approx(0.0, abs=1e-6)
+    assert M.final_displacement_error(pred, gt) == pytest.approx(0.0, abs=1e-6)
+
+
+def test_ade_matches_manual_computation():
+    pred = np.array([[[0.0, 0.0], [1.0, 0.0]]], dtype=np.float32)
+    gt = np.array([[[0.0, 0.0], [0.0, 0.0]]], dtype=np.float32)
+    assert M.average_displacement_error(pred, gt) == pytest.approx(0.5, abs=1e-6)
+    assert M.final_displacement_error(pred, gt) == pytest.approx(1.0, abs=1e-6)
+    
+def test_ece_zero_when_confidence_matches_accuracy():
+    rng = np.random.default_rng(0)
+    n = 1000
+    y_true = (rng.random(n) < 0.9).astype(int)
+    y_prob = np.zeros((n, 2), dtype=np.float32)
+    y_prob[:, 1] = 0.9
+    y_prob[:, 0] = 0.1
+    ece = M.expected_calibration_error(y_true, y_prob, num_bins=10)
+    assert ece < 0.05
