@@ -130,3 +130,17 @@ def test_ece_zero_when_confidence_matches_accuracy():
     y_prob[:, 0] = 0.1
     ece = M.expected_calibration_error(y_true, y_prob, num_bins=10)
     assert ece < 0.05
+
+def test_bleu4_identical_sentences_is_high():
+    cands = ["the pedestrian is crossing the road quickly"]
+    refs = ["the pedestrian is crossing the road quickly"]
+    score = M.bleu4(cands, refs)
+    assert score > 0.9
+
+
+def test_bleu4_unrelated_sentences_is_low():
+    cands = ["completely different words entirely here"]
+    refs = ["the pedestrian is crossing the road quickly"]
+    score = M.bleu4(cands, refs)
+    assert score < 0.2
+    
