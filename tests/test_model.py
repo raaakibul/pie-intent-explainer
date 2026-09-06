@@ -6,6 +6,7 @@ from utils.coordinate_transform import bounding_box_sequence_to_ego_xy, normaliz
 from models.temporal_encoder import TemporalEncoder
 from models.intent_head import IntentHead
 from models.trajectory_decoder import TrajectoryDecoder
+from explain.prompt_templates import ManeuverContext, recommend_maneuver
 
 from utils import metrics as M
 
@@ -143,4 +144,27 @@ def test_bleu4_unrelated_sentences_is_low():
     refs = ["the pedestrian is crossing the road quickly"]
     score = M.bleu4(cands, refs)
     assert score < 0.2
-    
+
+
+def test_maneuver_context_computes_ttc_and_distance():
+    traj = [(2.0, 0.0)] * 15
+    ctx = ManeuverContext(intent_label="crossing", intent_confidence=0.9,
+                           pred_traj_xy=traj, ego_speed_mps=4.0, frame_dt_s=2/30.0)
+    assert ctx.pedestrian_distance_m == pytest.approx(2.0, abs=1e-3)
+    assert ctx.time_to_collision_s == pytest.approx(0.5, abs=1e-3)
+
+
+def test_recommend_maneuver_decelerates_for_close_crossing_pedestrian(cfg):
+    traj = [(2.0, 0.0)] * 15  # close, low TTC
+    ctx = ManeuverContext(intent_label="crossing", intent_confidence=0.9,
+                           pred_traj_xy=traj, ego_speed_mps=8.0, frame_dt_s=2/30.0)
+    maneuver = recommend_maneuver(ctx, cfg)
+    assert maneuver["action"] == "decelerate_and_yield"
+
+
+def test_recommend_maneuver_maintains_speed_for_not_crossing(cfg):
+    traj = [(2.0, 0.0)] * 15
+    ctx = ManeuverContext(intent_label="not-crossing", intent_confidence=0.9,
+                           pred_traj_xy=traj, ego_speed_mps=8.0, frame_dt_s=2/30.0)
+    maneuver = recommend_maneuver(ctx, cfg)
+    assert maneuver["action"] == "maintain_speed"
