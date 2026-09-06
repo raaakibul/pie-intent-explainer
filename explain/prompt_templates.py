@@ -28,3 +28,26 @@ class ManeuverContext:
         forward_dist = max(traj[0][0], 0.1)
         self.time_to_collision_s = float(forward_dist / max(self.ego_speed_mps, 0.1))
         
+def recommend_maneuver(ctx: ManeuverContext, cfg: dict) -> dict:
+    e = cfg["explain"]
+    recommend_decel = (
+        ctx.intent_label == "crossing"
+        and ctx.time_to_collision_s < e["decel_trigger_ttc_s"]
+    )
+
+    if recommend_decel:
+        target_speed = max(0.0, ctx.ego_speed_mps - e["max_comfortable_decel_mps2"])
+        yield_clearance = e["min_yield_clearance_m"]
+        action = "decelerate_and_yield"
+    else:
+        target_speed = ctx.ego_speed_mps
+        yield_clearance = 0.0
+        action = "maintain_speed"
+
+    return {
+        "action": action,
+        "target_speed_mps": round(target_speed, 2),
+        "yield_clearance_m": yield_clearance,
+    }
+    
+    
