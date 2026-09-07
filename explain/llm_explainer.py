@@ -84,3 +84,14 @@ class OpenAIExplainer(Explainer):
         self.model_name = model_name
         self.max_tokens = max_tokens
         self.temperature = temperature
+        
+        
+    def explain(self, ctx: ManeuverContext, maneuver: dict) -> str:
+        messages = build_messages(ctx, maneuver)
+        resp = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,
+            max_tokens=self.max_tokens,
+            temperature=self.temperature,
+        )
+        return resp.choices[0].message.content.strip()
