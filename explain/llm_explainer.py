@@ -95,3 +95,21 @@ class OpenAIExplainer(Explainer):
             temperature=self.temperature,
         )
         return resp.choices[0].message.content.strip()
+    
+
+def build_explainer(cfg: dict) -> Explainer:
+    e = cfg["explain"]
+    if e["backend"] == "hf":
+        return HFExplainer(
+            model_name=e["hf_model"],
+            load_in_4bit=e["hf_load_in_4bit"],
+            max_new_tokens=e["hf_max_new_tokens"],
+            temperature=e["hf_temperature"],
+        )
+    elif e["backend"] == "openai":
+        return OpenAIExplainer(
+            model_name=e["openai_model"],
+            max_tokens=e["openai_max_tokens"],
+            temperature=e["openai_temperature"],
+        )
+    raise ValueError(f"Unknown explain.backend: {e['backend']!r}")
