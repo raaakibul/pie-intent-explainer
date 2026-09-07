@@ -49,3 +49,38 @@ class HFExplainer(Explainer):
             **quant_kwargs,
         )
         self.model.eval()
+        
+    def explain(self, ctx: ManeuverContext, maneuver: dict) -> str:
+        import torch
+
+        messages = build_messages(ctx, maneuver)
+        prompt = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+
+        with torch.no_grad():
+            out = self.model.generate(
+                **inputs,
+                max_new_tokens=self.max_new_tokens,
+                temperature=self.temperature,
+                do_sample=self.temperature > 0,
+                pad_token_id=self.tokenizer.eos_token_id,
+            )
+        generated = out[0][inputs["input_ids"].shape[1]:]
+        return self.tokenizer.decode(generated, skip_special_tokens=True).strip()
+    
+class OpenAIExplainer(Explainer):
+    def __init__(self, model_name: str = "gpt-4o", max_tokens: int = 200,
+                 temperature: float = 0.3):
+        from openai import OpenAI
+
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "OPENAI_API_KEY not set. Export it, or use --llm_backend hf instead."
+            )
+        self.client = OpenAI(api_key=api_key)
+        self.model_name = model_name
+        self.max_tokens = max_tokens
+        self.temperature = temperature
