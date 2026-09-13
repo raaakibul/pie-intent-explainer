@@ -73,3 +73,33 @@ def evaluate_val_loss(model, val_loader, cfg, device):
     model.train()
     return total_loss / max(1, n)
 
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=str, default="configs/default.yaml")
+    parser.add_argument("--resume", type=str, default=None)
+    args = parser.parse_args()
+
+    with open(args.config) as f:
+        cfg = yaml.safe_load(f)
+
+    set_seed(cfg["experiment"]["seed"])
+    device = cfg["experiment"]["device"] if torch.cuda.is_available() else "cpu"
+    os.makedirs(cfg["experiment"]["checkpoint_dir"], exist_ok=True)
+
+    train_loader, val_loader = build_dataloaders(cfg)
+
+    model = IETModel(cfg).to(device)
+    if args.resume:
+        model.load_state_dict(torch.load(args.resume, map_location=device))
+        print(f"Resumed weights from {args.resume}")
+
+    optimizer = torch.optim.AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=cfg["train"]["lr"], weight_decay=cfg["train"]["weight_decay"],
+    )
+
+    total_steps = len(train_loader) * cfg["train"]["epochs"]
+    warmup_steps = len(train_loader) * cfg["train"]["warmup_epochs"]
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer, lr_lambda=lambda step: lr_lambda_fn(step, total_steps, warmup_steps)
+    )
