@@ -103,3 +103,52 @@ def main():
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer, lr_lambda=lambda step: lr_lambda_fn(step, total_steps, warmup_steps)
     )
+    
+
+    
+    best_val_loss = float("inf")
+    patience_counter = 0
+    global_step = 0
+
+    for epoch in range(cfg["train"]["epochs"]):
+        model.train()
+        pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{cfg['train']['epochs']}")
+        
+        for batch in pbar:
+            batch = move_batch_to_device(batch, device)
+            outputs = model(batch, teacher_forcing=True)
+            loss, loss_dict = compute_loss(outputs, batch, cfg)
+
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg["train"]["grad_clip_norm"])
+            optimizer.step()
+            scheduler.step()
+
+            global_step += 1
+            if global_step % cfg["train"]["log_every_n_steps"] == 0:
+                pbar.set_postfix(loss_dict)
+                
+        if (epoch + 1) % cfg["train"]["val_every_n_epochs"] == 0:
+            val_loss = evaluate_val_loss(model, val_loader, cfg, device)
+            print(f"[epoch {epoch+1}] val_loss={val_loss:.4f}")
+
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                patience_counter = 0
+                ckpt_path = os.path.join(cfg["experiment"]["checkpoint_dir"], "best.pt")
+                torch.save(model.state_dict(), ckpt_path)
+                print(f"  New best model saved to {ckpt_path}")
+            else:
+                patience_counter += 1
+                if patience_counter >= cfg["train"]["early_stopping_patience"]:
+                    print(f"Early stopping at epoch {epoch+1}.")
+                    break
+    
+    last_ckpt = os.path.join(cfg["experiment"]["checkpoint_dir"], "last.pt")
+    torch.save(model.state_dict(), last_ckpt)
+    print(f"Training complete. Last checkpoint saved to {last_ckpt}")
+
+
+if __name__ == "__main__":
+    main()
