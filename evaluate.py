@@ -64,3 +64,38 @@ def run_trajectory_and_intent_eval(model, loader, device):
         "ECE": M.expected_calibration_error(intent_true, intent_prob),
     }
     return results, per_clip_records
+
+def run_explanation_eval(per_clip_records, human_explanations_path, cfg):
+    from explain.llm_explainer import build_explainer
+
+    if not os.path.exists(human_explanations_path):
+        print(f"[warn] {human_explanations_path} not found — skipping BLEU-4 explanation eval. "
+              f"See docs/annotation_guidelines.md to produce this file.")
+        return None
+
+    with open(human_explanations_path) as f:
+        human_refs = json.load(f)
+
+    eval_clip_ids = [c for c in per_clip_records if c["clip_id"] in human_refs]
+    if not eval_clip_ids:
+        print("[warn] No overlap between predictions and human_explanations.json clip_ids.")
+        return None
+
+    explainer = build_explainer(cfg)
+    frame_dt_s = cfg["data"]["frame_stride"] / 30.0
+
+    candidates, references = [], []
+    for rec in tqdm(eval_clip_ids, desc="Generating explanations"):
+        result = explainer.explain_from_model_output(
+            intent_label=rec["intent_label"],
+            intent_confidence=rec["intent_confidence"],
+            pred_traj_xy=rec["pred_traj"],
+            ego_speed_mps=rec["ego_speed_mps"],
+            frame_dt_s=frame_dt_s,
+            cfg=cfg,
+        )
+        candidates.append(result["explanation"])
+        references.append(human_refs[rec["clip_id"]])
+
+    return {"BLEU-4": M.bleu4(candidates, references), "n_examples": len(candidates)}
+
