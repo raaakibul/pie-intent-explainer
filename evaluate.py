@@ -99,3 +99,50 @@ def run_explanation_eval(per_clip_records, human_explanations_path, cfg):
 
     return {"BLEU-4": M.bleu4(candidates, references), "n_examples": len(candidates)}
 
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=str, default="configs/default.yaml")
+    parser.add_argument("--checkpoint", type=str, required=True)
+    parser.add_argument("--split", type=str, default="test", choices=["val", "test"])
+    parser.add_argument("--skip_explanations", action="store_true")
+    args = parser.parse_args()
+
+    with open(args.config) as f:
+        cfg = yaml.safe_load(f)
+
+    device = cfg["experiment"]["device"] if torch.cuda.is_available() else "cpu"
+
+    pie_image_root = os.path.join(cfg["data"]["pie_root"], "images")
+    split_json = os.path.join(cfg["data"]["processed_dir"], f"{args.split}.json")
+    ds = PIEClipDataset(split_json, pie_image_root, cfg)
+    loader = DataLoader(ds, batch_size=cfg["train"]["batch_size"], shuffle=False,
+                         num_workers=cfg["data"]["num_workers"], collate_fn=collate_fn)
+
+    model = IETModel(cfg).to(device)
+    model.load_state_dict(torch.load(args.checkpoint, map_location=device))
+
+    traj_intent_results, per_clip_records = run_trajectory_and_intent_eval(model, loader, device)
+    print("\n=== Trajectory & Intent metrics ===")
+    for k, v in traj_intent_results.items():
+        print(f"  {k}: {v:.4f}")
+
+    explanation_results = None
+    if not args.skip_explanations:
+        explanation_results = run_explanation_eval(
+            per_clip_records, cfg["evaluate"]["human_explanations_path"], cfg
+        )
+        if explanation_results:
+            print("\n=== Explanation metrics ===")
+            for k, v in explanation_results.items():
+                print(f"  {k}: {v}")
+
+    os.makedirs(cfg["experiment"]["output_dir"], exist_ok=True)
+    out_path = os.path.join(cfg["experiment"]["output_dir"], f"eval_{args.split}.json")
+    with open(out_path, "w") as f:
+        json.dump({"trajectory_intent": traj_intent_results, "explanation": explanation_results}, f, indent=2)
+    print(f"\nSaved results to {out_path}")
+
+
+if __name__ == "__main__":
+    main()
