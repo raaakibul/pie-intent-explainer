@@ -20,7 +20,7 @@ See [`docs/architecture.md`](docs/architecture.md) for full tensor shapes.
 ## Installation
 
 ```bash
-git clone https://github.com/<you>/pie-intent-explainer.git
+https://github.com/raaakibul/pie-intent-explainer.git
 cd pie-intent-explainer
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
