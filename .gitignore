@@ -6,3 +6,16 @@ outputs/
 data/processed/
 PIE_dataset/
 *.pt
+venv/
+*.egg-info/
+# data / weights (large, obtained separately)
+PIE_dataset/
+data/processed/
+checkpoints/
+outputs/
+*.pt
+*.pth
+.DS_Store
+.ipynb_checkpoints/
+.pytest_cache/
+*.log
