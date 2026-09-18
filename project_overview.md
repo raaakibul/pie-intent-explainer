@@ -9,5 +9,6 @@ Predicts future trajectory, shaped by that intent
 A simple rule (not AI) decides the maneuver — target speed, clearance
 An LLM explains that decision in natural language
 
-#Where it's used?
+# Where it's used?
+
 Self-driving cars, delivery robots real-time, human-readable reasons for braking or yielding.
